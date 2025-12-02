@@ -1,18 +1,20 @@
-const CACHE_NAME = 'classseats-mobile-v1'
-const CORE_ASSETS = ['/', '/index.html', '/ClassSeatsMobile']
+const CACHE_NAME = 'classseats-mobile-v2'
+const BASE = 'https://mifish3474.github.io/ClassSeats-Mobile'
+const CORE_ASSETS = [
+  `${BASE}/`,
+  `${BASE}/index.html`,
+  `${BASE}/ClassSeatsMobile`,
+  `${BASE}/manifest.webmanifest`,
+  `${BASE}/icons/icon-192.png`,
+  `${BASE}/icons/icon-512.png`,
+  `${BASE}/icons/apple-touch-icon.png`,
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) =>
-        cache.addAll(
-          CORE_ASSETS.map((path) => {
-            const cacheBusting = path.includes('?') ? path : `${path}${path.includes('?') ? '' : '?v=' + Date.now()}`
-            return cacheBusting
-          })
-        )
-      )
+      .then((cache) => cache.addAll(CORE_ASSETS))
       .catch(() => {})
   )
   self.skipWaiting()
@@ -37,6 +39,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
   const url = new URL(request.url)
+  if (!url.href.startsWith(BASE)) return
   if (url.pathname.startsWith('/mobile-sync')) return
 
   event.respondWith(
@@ -50,7 +53,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache))
           return response
         })
-        .catch(() => cached || caches.match('/ClassSeatsMobile') || caches.match('/index.html'))
+        .catch(() => cached || caches.match(`${BASE}/ClassSeatsMobile`) || caches.match(`${BASE}/index.html`))
       return cached || fetchPromise
     })
   )
