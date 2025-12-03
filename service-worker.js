@@ -1,15 +1,12 @@
-const SW_VERSION = 'v13'
-const CACHE_NAME = 'classseats-mobile-' + SW_VERSION
+const CACHE_NAME = 'classseats-mobile-v8'
 const ORIGIN = self.location.origin
 const BASE = `${ORIGIN}/ClassSeats-Mobile`
 const CORE_ASSETS = [
-  // App shell (cover both with/without trailing slash and explicit index)
+  `${BASE}/`,
+  `${BASE}/index.html`,
   `${BASE}/ClassSeatsMobile`,
   `${BASE}/ClassSeatsMobile/`,
   `${BASE}/ClassSeatsMobile/index.html`,
-  `${BASE}/`,
-  `${BASE}/index.html`,
-  // Manifest & icons
   `${BASE}/manifest.webmanifest`,
   `${BASE}/icons/icon-192.png`,
   `${BASE}/icons/icon-512.png`,
@@ -17,35 +14,24 @@ const CORE_ASSETS = [
 ]
 
 self.addEventListener('install', (event) => {
-  console.log('[SW]', SW_VERSION, 'install')
   event.waitUntil(
-    (async () => {
-      const cache = await caches.open(CACHE_NAME)
-      await Promise.allSettled(
-        CORE_ASSETS.map(async (url) => {
-          try {
-            const res = await fetch(url, { cache: 'no-store' })
-            if (res && res.ok) {
-              await cache.put(url, res)
-            }
-          } catch (err) {
-            // Ignore individual failures so one bad URL doesn’t break install
-          }
-        })
-      )
-      await self.skipWaiting()
-    })()
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(CORE_ASSETS))
+      .catch(() => {})
   )
+  self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW]', SW_VERSION, 'activate')
   event.waitUntil(
     caches
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((key) => key.startsWith('classseats-mobile-') && key !== CACHE_NAME).map((key) => caches.delete(key))
+          keys
+            .filter((key) => key !== CACHE_NAME)
+            .map((key) => caches.delete(key))
         )
       )
   )
@@ -57,7 +43,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   const url = new URL(request.url)
 
-  // Navigation: network-first, then cached shell, then inline offline notice
+  // STRONG BYPASS: for now, always network-first for navigation; no cache fallback to avoid stale shell
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -67,19 +53,8 @@ self.addEventListener('fetch', (event) => {
         } catch {
           /* ignore */
         }
-        const cached =
-          (await caches.match(request, { ignoreSearch: true })) ||
-          (await caches.match(`${BASE}/ClassSeatsMobile/index.html`, { ignoreSearch: true })) ||
-          (await caches.match(`${BASE}/ClassSeatsMobile`, { ignoreSearch: true })) ||
-          (await caches.match(`${BASE}/ClassSeatsMobile/`, { ignoreSearch: true })) ||
-          (await caches.match(`${BASE}/index.html`, { ignoreSearch: true })) ||
-          (await caches.match('/index.html', { ignoreSearch: true })) ||
-          (await caches.match('index.html', { ignoreSearch: true }))
-        if (cached) return cached
-        return new Response('<h1>Offline</h1><p>Cannot reach the app right now.</p>', {
-          status: 503,
-          headers: { 'Content-Type': 'text/html' },
-        })
+        // If network fails, at least return a simple offline response
+        return new Response('Offline', { status: 503, statusText: 'Offline' })
       })()
     )
     return
@@ -95,7 +70,7 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(request)
         if (cached) return cached
         try {
-          const response = await fetch(request, { cache: 'no-store' })
+          const response = await fetch(request)
           if (response && response.status === 200) {
             const clone = response.clone()
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
@@ -103,26 +78,12 @@ self.addEventListener('fetch', (event) => {
           return response
         } catch {
           const fallback =
-            (await caches.match(request, { ignoreSearch: true })) ||
-            (await caches.match(`${BASE}/ClassSeatsMobile/index.html`, { ignoreSearch: true })) ||
-            (await caches.match(`${BASE}/ClassSeatsMobile`, { ignoreSearch: true })) ||
-            (await caches.match(`${BASE}/ClassSeatsMobile/`, { ignoreSearch: true })) ||
-            (await caches.match(`${BASE}/index.html`, { ignoreSearch: true })) ||
-            (await caches.match('/index.html', { ignoreSearch: true })) ||
-            (await caches.match('index.html', { ignoreSearch: true }))
-          return fallback || new Response('<h1>Offline</h1><p>Cannot reach the app right now.</p>', {
-            status: 503,
-            headers: { 'Content-Type': 'text/html' },
-          })
+            (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
+            (await caches.match(`${BASE}/index.html`)) ||
+            (await caches.match('/index.html'))
+          return fallback || new Response('Offline', { status: 503, statusText: 'Offline' })
         }
       })()
     )
-  }
-})
-
-// Respond to version ping
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'PING_VERSION') {
-    event.source?.postMessage({ type: 'SW_VERSION', version: SW_VERSION })
   }
 })
