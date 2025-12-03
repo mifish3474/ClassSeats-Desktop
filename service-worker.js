@@ -1,9 +1,11 @@
-const CACHE_NAME = 'classseats-mobile-v2'
+const CACHE_NAME = 'classseats-mobile-v3'
 const BASE = 'https://mifish3474.github.io/ClassSeats-Mobile'
 const CORE_ASSETS = [
   `${BASE}/`,
   `${BASE}/index.html`,
   `${BASE}/ClassSeatsMobile`,
+  `${BASE}/ClassSeatsMobile/`,
+  `${BASE}/ClassSeatsMobile/index.html`,
   `${BASE}/manifest.webmanifest`,
   `${BASE}/icons/icon-192.png`,
   `${BASE}/icons/icon-512.png`,
@@ -39,18 +41,30 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
   const url = new URL(request.url)
+
+  // Cache only our domain
   if (!url.href.startsWith(BASE)) return
+
+  // Navigation requests -> serve cached shell
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      caches.match(`${BASE}/ClassSeatsMobile`).then((cached) => cached || caches.match(`${BASE}/index.html`) || fetch(request))
+    )
+    return
+  }
+
+  // Skip sync API calls
   if (url.pathname.startsWith('/mobile-sync')) return
 
+  // Cache-first, then network, with fallback to shell
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request)
         .then((response) => {
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response
+          if (response && response.status === 200) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
           }
-          const responseToCache = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache))
           return response
         })
         .catch(() => cached || caches.match(`${BASE}/ClassSeatsMobile`) || caches.match(`${BASE}/index.html`))

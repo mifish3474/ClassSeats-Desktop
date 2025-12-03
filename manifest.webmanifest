@@ -1,7 +1,7 @@
 {
   "name": "ClassSeats Mobile",
   "short_name": "ClassSeats",
-  "start_url": "https://mifish3474.github.io/ClassSeats-Mobile/ClassSeatsMobile",
+  "start_url": "https://mifish3474.github.io/ClassSeats-Mobile/ClassSeatsMobile/",
   "scope": "https://mifish3474.github.io/ClassSeats-Mobile/",
   "display": "standalone",
   "background_color": "#2e1065",
