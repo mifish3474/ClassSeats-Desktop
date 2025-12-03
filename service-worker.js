@@ -45,10 +45,13 @@ self.addEventListener('fetch', (event) => {
   // Cache only our domain
   if (!url.href.startsWith(BASE)) return
 
-  // Navigation requests -> serve cached shell
+  // Navigation requests -> serve cached shell with safe fallback
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match(`${BASE}/ClassSeatsMobile`).then((cached) => cached || caches.match(`${BASE}/index.html`) || fetch(request))
+      caches
+        .match(`${BASE}/ClassSeatsMobile`)
+        .then((cached) => cached || caches.match(`${BASE}/ClassSeatsMobile/`) || caches.match(`${BASE}/index.html`) || fetch(request))
+        .catch(() => caches.match(`${BASE}/index.html`) || new Response('Offline', { status: 503, statusText: 'Offline' }))
     )
     return
   }
@@ -56,7 +59,7 @@ self.addEventListener('fetch', (event) => {
   // Skip sync API calls
   if (url.pathname.startsWith('/mobile-sync')) return
 
-  // Cache-first, then network, with fallback to shell
+  // Cache-first, then network, with safe fallback
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request)
@@ -67,7 +70,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response
         })
-        .catch(() => cached || caches.match(`${BASE}/ClassSeatsMobile`) || caches.match(`${BASE}/index.html`))
+        .catch(() => cached || caches.match(`${BASE}/ClassSeatsMobile`) || caches.match(`${BASE}/index.html`) || new Response('Offline', { status: 503, statusText: 'Offline' }))
       return cached || fetchPromise
     })
   )
