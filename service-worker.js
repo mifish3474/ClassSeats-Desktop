@@ -1,4 +1,4 @@
-const CACHE_NAME = 'classseats-mobile-v5'
+const CACHE_NAME = 'classseats-mobile-v6'
 const ORIGIN = self.location.origin
 const BASE = `${ORIGIN}/ClassSeats-Mobile`
 const CORE_ASSETS = [
@@ -43,10 +43,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   const url = new URL(request.url)
 
-  // Cache only our domain
-  if (!url.href.startsWith(BASE)) return
-
-  // Navigation requests -> prefer network, fall back to shell/cache, never return null
+  // Handle navigation: try network first, then cached shell, never null
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -59,7 +56,8 @@ self.addEventListener('fetch', (event) => {
         const cached =
           (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
           (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
-          (await caches.match(`${BASE}/index.html`))
+          (await caches.match(`${BASE}/index.html`)) ||
+          (await caches.match('/index.html'))
         return cached || new Response('Offline', { status: 503, statusText: 'Offline' })
       })()
     )
@@ -69,24 +67,27 @@ self.addEventListener('fetch', (event) => {
   // Skip sync API calls
   if (url.pathname.startsWith('/mobile-sync')) return
 
-  // Cache-first, then network, with safe fallback
-  event.respondWith(
-    (async () => {
-      const cached = await caches.match(request)
-      if (cached) return cached
-      try {
-        const response = await fetch(request)
-        if (response && response.status === 200) {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+  // For same-origin GETs: cache-first then network, with shell fallback
+  if (url.origin === ORIGIN) {
+    event.respondWith(
+      (async () => {
+        const cached = await caches.match(request)
+        if (cached) return cached
+        try {
+          const response = await fetch(request)
+          if (response && response.status === 200) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+          }
+          return response
+        } catch {
+          const fallback =
+            (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
+            (await caches.match(`${BASE}/index.html`)) ||
+            (await caches.match('/index.html'))
+          return fallback || new Response('Offline', { status: 503, statusText: 'Offline' })
         }
-        return response
-      } catch {
-        const fallback =
-          (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
-          (await caches.match(`${BASE}/index.html`))
-        return fallback || new Response('Offline', { status: 503, statusText: 'Offline' })
-      }
-    })()
-  )
+      })()
+    )
+  }
 })
