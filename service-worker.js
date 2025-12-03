@@ -1,4 +1,4 @@
-const SW_VERSION = 'v12'
+const SW_VERSION = 'v13'
 const CACHE_NAME = 'classseats-mobile-' + SW_VERSION
 const ORIGIN = self.location.origin
 const BASE = `${ORIGIN}/ClassSeats-Mobile`
@@ -19,12 +19,23 @@ const CORE_ASSETS = [
 self.addEventListener('install', (event) => {
   console.log('[SW]', SW_VERSION, 'install')
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(CORE_ASSETS))
-      .catch(() => {})
+    (async () => {
+      const cache = await caches.open(CACHE_NAME)
+      await Promise.allSettled(
+        CORE_ASSETS.map(async (url) => {
+          try {
+            const res = await fetch(url, { cache: 'no-store' })
+            if (res && res.ok) {
+              await cache.put(url, res)
+            }
+          } catch (err) {
+            // Ignore individual failures so one bad URL doesn’t break install
+          }
+        })
+      )
+      await self.skipWaiting()
+    })()
   )
-  self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
