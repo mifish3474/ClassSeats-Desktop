@@ -1,13 +1,10 @@
-const SW_VERSION = 'v9'
+const SW_VERSION = 'v10'
 const CACHE_NAME = 'classseats-mobile-' + SW_VERSION
 const ORIGIN = self.location.origin
 const BASE = `${ORIGIN}/ClassSeats-Mobile`
 const CORE_ASSETS = [
-  `${BASE}/`,
-  `${BASE}/index.html`,
   `${BASE}/ClassSeatsMobile`,
   `${BASE}/ClassSeatsMobile/`,
-  `${BASE}/ClassSeatsMobile/index.html`,
   `${BASE}/manifest.webmanifest`,
   `${BASE}/icons/icon-192.png`,
   `${BASE}/icons/icon-512.png`,
@@ -32,9 +29,7 @@ self.addEventListener('activate', (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys
-            .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key))
+          keys.filter((key) => key.startsWith('classseats-mobile-') && key !== CACHE_NAME).map((key) => caches.delete(key))
         )
       )
   )
