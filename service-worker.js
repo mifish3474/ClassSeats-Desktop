@@ -1,4 +1,4 @@
-const CACHE_NAME = 'classseats-mobile-v7'
+const CACHE_NAME = 'classseats-mobile-v8'
 const ORIGIN = self.location.origin
 const BASE = `${ORIGIN}/ClassSeats-Mobile`
 const CORE_ASSETS = [
@@ -41,24 +41,20 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
-  // TEMPORARY BYPASS: for 48 hours, always go to network for navigations to ensure a clean load.
   const url = new URL(request.url)
+
+  // STRONG BYPASS: for now, always network-first for navigation; no cache fallback to avoid stale shell
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
-          const network = await fetch(request)
+          const network = await fetch(request, { cache: 'no-store' })
           if (network && network.ok) return network
         } catch {
           /* ignore */
         }
-        // If network fails, fall back to cached shell
-        const cached =
-          (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
-          (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
-          (await caches.match(`${BASE}/index.html`)) ||
-          (await caches.match('/index.html'))
-        return cached || new Response('Offline', { status: 503, statusText: 'Offline' })
+        // If network fails, at least return a simple offline response
+        return new Response('Offline', { status: 503, statusText: 'Offline' })
       })()
     )
     return
