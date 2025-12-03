@@ -1,4 +1,4 @@
-const CACHE_NAME = 'classseats-mobile-v6'
+const CACHE_NAME = 'classseats-mobile-v7'
 const ORIGIN = self.location.origin
 const BASE = `${ORIGIN}/ClassSeats-Mobile`
 const CORE_ASSETS = [
@@ -41,9 +41,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
+  // TEMPORARY BYPASS: for 48 hours, always go to network for navigations to ensure a clean load.
   const url = new URL(request.url)
-
-  // Handle navigation: try network first, then cached shell, never null
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -53,6 +52,7 @@ self.addEventListener('fetch', (event) => {
         } catch {
           /* ignore */
         }
+        // If network fails, fall back to cached shell
         const cached =
           (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
           (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
