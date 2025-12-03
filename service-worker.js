@@ -1,10 +1,15 @@
-const SW_VERSION = 'v10'
+const SW_VERSION = 'v11'
 const CACHE_NAME = 'classseats-mobile-' + SW_VERSION
 const ORIGIN = self.location.origin
 const BASE = `${ORIGIN}/ClassSeats-Mobile`
 const CORE_ASSETS = [
+  // App shell (cover both with/without trailing slash and explicit index)
   `${BASE}/ClassSeatsMobile`,
   `${BASE}/ClassSeatsMobile/`,
+  `${BASE}/ClassSeatsMobile/index.html`,
+  `${BASE}/`,
+  `${BASE}/index.html`,
+  // Manifest & icons
   `${BASE}/manifest.webmanifest`,
   `${BASE}/icons/icon-192.png`,
   `${BASE}/icons/icon-512.png`,
@@ -52,10 +57,12 @@ self.addEventListener('fetch', (event) => {
           /* ignore */
         }
         const cached =
+          (await caches.match(`${BASE}/ClassSeatsMobile/index.html`)) ||
           (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
           (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
           (await caches.match(`${BASE}/index.html`)) ||
-          (await caches.match('/index.html'))
+          (await caches.match('/index.html')) ||
+          (await caches.match('index.html'))
         if (cached) return cached
         return new Response('<h1>Offline</h1><p>Cannot reach the app right now.</p>', {
           status: 503,
@@ -84,9 +91,12 @@ self.addEventListener('fetch', (event) => {
           return response
         } catch {
           const fallback =
+            (await caches.match(`${BASE}/ClassSeatsMobile/index.html`)) ||
             (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
+            (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
             (await caches.match(`${BASE}/index.html`)) ||
-            (await caches.match('/index.html'))
+            (await caches.match('/index.html')) ||
+            (await caches.match('index.html'))
           return fallback || new Response('<h1>Offline</h1><p>Cannot reach the app right now.</p>', {
             status: 503,
             headers: { 'Content-Type': 'text/html' },
