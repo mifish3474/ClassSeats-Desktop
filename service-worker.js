@@ -1,5 +1,6 @@
-const CACHE_NAME = 'classseats-mobile-v4'
-const BASE = 'https://mifish3474.github.io/ClassSeats-Mobile'
+const CACHE_NAME = 'classseats-mobile-v5'
+const ORIGIN = self.location.origin
+const BASE = `${ORIGIN}/ClassSeats-Mobile`
 const CORE_ASSETS = [
   `${BASE}/`,
   `${BASE}/index.html`,
@@ -52,7 +53,9 @@ self.addEventListener('fetch', (event) => {
         try {
           const network = await fetch(request)
           if (network && network.ok) return network
-        } catch {/* ignore */}
+        } catch {
+          /* ignore */
+        }
         const cached =
           (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
           (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
