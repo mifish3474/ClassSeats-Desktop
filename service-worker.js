@@ -1,4 +1,4 @@
-const SW_VERSION = 'v11'
+const SW_VERSION = 'v12'
 const CACHE_NAME = 'classseats-mobile-' + SW_VERSION
 const ORIGIN = self.location.origin
 const BASE = `${ORIGIN}/ClassSeats-Mobile`
@@ -57,12 +57,13 @@ self.addEventListener('fetch', (event) => {
           /* ignore */
         }
         const cached =
-          (await caches.match(`${BASE}/ClassSeatsMobile/index.html`)) ||
-          (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
-          (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
-          (await caches.match(`${BASE}/index.html`)) ||
-          (await caches.match('/index.html')) ||
-          (await caches.match('index.html'))
+          (await caches.match(request, { ignoreSearch: true })) ||
+          (await caches.match(`${BASE}/ClassSeatsMobile/index.html`, { ignoreSearch: true })) ||
+          (await caches.match(`${BASE}/ClassSeatsMobile`, { ignoreSearch: true })) ||
+          (await caches.match(`${BASE}/ClassSeatsMobile/`, { ignoreSearch: true })) ||
+          (await caches.match(`${BASE}/index.html`, { ignoreSearch: true })) ||
+          (await caches.match('/index.html', { ignoreSearch: true })) ||
+          (await caches.match('index.html', { ignoreSearch: true }))
         if (cached) return cached
         return new Response('<h1>Offline</h1><p>Cannot reach the app right now.</p>', {
           status: 503,
@@ -91,12 +92,13 @@ self.addEventListener('fetch', (event) => {
           return response
         } catch {
           const fallback =
-            (await caches.match(`${BASE}/ClassSeatsMobile/index.html`)) ||
-            (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
-            (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
-            (await caches.match(`${BASE}/index.html`)) ||
-            (await caches.match('/index.html')) ||
-            (await caches.match('index.html'))
+            (await caches.match(request, { ignoreSearch: true })) ||
+            (await caches.match(`${BASE}/ClassSeatsMobile/index.html`, { ignoreSearch: true })) ||
+            (await caches.match(`${BASE}/ClassSeatsMobile`, { ignoreSearch: true })) ||
+            (await caches.match(`${BASE}/ClassSeatsMobile/`, { ignoreSearch: true })) ||
+            (await caches.match(`${BASE}/index.html`, { ignoreSearch: true })) ||
+            (await caches.match('/index.html', { ignoreSearch: true })) ||
+            (await caches.match('index.html', { ignoreSearch: true }))
           return fallback || new Response('<h1>Offline</h1><p>Cannot reach the app right now.</p>', {
             status: 503,
             headers: { 'Content-Type': 'text/html' },
