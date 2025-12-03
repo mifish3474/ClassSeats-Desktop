@@ -1,4 +1,4 @@
-const CACHE_NAME = 'classseats-mobile-v3'
+const CACHE_NAME = 'classseats-mobile-v4'
 const BASE = 'https://mifish3474.github.io/ClassSeats-Mobile'
 const CORE_ASSETS = [
   `${BASE}/`,
@@ -45,13 +45,20 @@ self.addEventListener('fetch', (event) => {
   // Cache only our domain
   if (!url.href.startsWith(BASE)) return
 
-  // Navigation requests -> serve cached shell with safe fallback
+  // Navigation requests -> prefer network, fall back to shell/cache, never return null
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches
-        .match(`${BASE}/ClassSeatsMobile`)
-        .then((cached) => cached || caches.match(`${BASE}/ClassSeatsMobile/`) || caches.match(`${BASE}/index.html`) || fetch(request))
-        .catch(() => caches.match(`${BASE}/index.html`) || new Response('Offline', { status: 503, statusText: 'Offline' }))
+      (async () => {
+        try {
+          const network = await fetch(request)
+          if (network && network.ok) return network
+        } catch {/* ignore */}
+        const cached =
+          (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
+          (await caches.match(`${BASE}/ClassSeatsMobile/`)) ||
+          (await caches.match(`${BASE}/index.html`))
+        return cached || new Response('Offline', { status: 503, statusText: 'Offline' })
+      })()
     )
     return
   }
@@ -61,17 +68,22 @@ self.addEventListener('fetch', (event) => {
 
   // Cache-first, then network, with safe fallback
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-          }
-          return response
-        })
-        .catch(() => cached || caches.match(`${BASE}/ClassSeatsMobile`) || caches.match(`${BASE}/index.html`) || new Response('Offline', { status: 503, statusText: 'Offline' }))
-      return cached || fetchPromise
-    })
+    (async () => {
+      const cached = await caches.match(request)
+      if (cached) return cached
+      try {
+        const response = await fetch(request)
+        if (response && response.status === 200) {
+          const clone = response.clone()
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+        }
+        return response
+      } catch {
+        const fallback =
+          (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
+          (await caches.match(`${BASE}/index.html`))
+        return fallback || new Response('Offline', { status: 503, statusText: 'Offline' })
+      }
+    })()
   )
 })
