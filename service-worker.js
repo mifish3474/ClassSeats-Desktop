@@ -1,17 +1,34 @@
-const CACHE_NAME = 'classseats-mobile-v8'
-const ORIGIN = self.location.origin
-const BASE = `${ORIGIN}/ClassSeats-Mobile`
+const CACHE_NAME = 'classseats-pwa-v1'
 const CORE_ASSETS = [
-  `${BASE}/`,
-  `${BASE}/index.html`,
-  `${BASE}/ClassSeatsMobile`,
-  `${BASE}/ClassSeatsMobile/`,
-  `${BASE}/ClassSeatsMobile/index.html`,
-  `${BASE}/manifest.webmanifest`,
-  `${BASE}/icons/icon-192.png`,
-  `${BASE}/icons/icon-512.png`,
-  `${BASE}/icons/apple-touch-icon.png`,
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/apple-touch-icon.png',
 ]
+
+const isGoogleRequest = (url) => {
+  return (
+    url.includes('googleapis.com') ||
+    url.includes('googleusercontent.com') ||
+    url.includes('accounts.google.com') ||
+    url.includes('gstatic.com')
+  )
+}
+
+const isCloudFunction = (url) => {
+  return url.includes('classseats-sync.cloudfunctions.net')
+}
+
+const isExternal = (url, origin) => {
+  return (
+    url.origin !== origin ||
+    isGoogleRequest(url.href) ||
+    isCloudFunction(url.href)
+  )
+}
+
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -25,15 +42,11 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key))
-        )
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
       )
+    )
   )
   self.clients.claim()
 })
@@ -41,30 +54,39 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
+
   const url = new URL(request.url)
 
-  // STRONG BYPASS: for now, always network-first for navigation; no cache fallback to avoid stale shell
-  if (request.mode === 'navigate') {
+  // Never intercept Google auth/Drive calls, cloud functions, or any external domains.
+  if (isExternal(url, self.location.origin)) {
+    return
+  }
+
+  const isNavRequest = request.mode === 'navigate'
+  const isStaticAsset =
+    /\.(js|css|png|svg|ico|webmanifest|json)$/.test(url.pathname) ||
+    CORE_ASSETS.some((asset) => asset.endsWith(url.pathname))
+
+  if (isNavRequest) {
+    // Navigation: cache-first, then network, then fallback to cached shell.
     event.respondWith(
       (async () => {
+        const cached = await caches.match('./index.html')
+        if (cached) return cached
         try {
-          const network = await fetch(request, { cache: 'no-store' })
+          const network = await fetch(request)
           if (network && network.ok) return network
         } catch {
           /* ignore */
         }
-        // If network fails, at least return a simple offline response
-        return new Response('Offline', { status: 503, statusText: 'Offline' })
+        return cached || new Response('Offline', { status: 503, statusText: 'Offline' })
       })()
     )
     return
   }
 
-  // Skip sync API calls
-  if (url.pathname.startsWith('/mobile-sync')) return
-
-  // For same-origin GETs: cache-first then network, with shell fallback
-  if (url.origin === ORIGIN) {
+  if (isStaticAsset) {
+    // Static assets: cache-first, then network and cache the result.
     event.respondWith(
       (async () => {
         const cached = await caches.match(request)
@@ -77,11 +99,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response
         } catch {
-          const fallback =
-            (await caches.match(`${BASE}/ClassSeatsMobile`)) ||
-            (await caches.match(`${BASE}/index.html`)) ||
-            (await caches.match('/index.html'))
-          return fallback || new Response('Offline', { status: 503, statusText: 'Offline' })
+          return cached || new Response('Offline', { status: 503, statusText: 'Offline' })
         }
       })()
     )
