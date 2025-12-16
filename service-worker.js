@@ -1,4 +1,4 @@
-const BUILD_REV = 'c150fbf73bd642ec743013cb1b9063b4d0f61b68'
+const BUILD_REV = 'c49b38344fb08cd94e737adc28abd3aa33a440ad'
 const CACHE_NAME = `classseats-pwa-${BUILD_REV}`
 const CORE_ASSETS = [
   './',
@@ -63,6 +63,17 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url)
 
+  // Connectivity probe must ALWAYS hit the network (never cache),
+  // otherwise offline detection becomes unreliable in PWAs.
+  if (url.pathname === '/ping.txt') {
+    event.respondWith(
+      fetch(request).catch(
+        () => new Response('Offline', { status: 503, statusText: 'Offline' })
+      )
+    )
+    return
+  }
+
   // Never intercept Google auth/Drive calls, cloud functions, or any external domains.
   if (isExternal(url, self.location.origin)) {
     return
@@ -87,7 +98,9 @@ self.addEventListener('fetch', (event) => {
           (await caches.match(request)) ||
           (await caches.match('/index.html')) ||
           (await caches.match('./index.html'))
-        return cached || new Response('Offline', { status: 503, statusText: 'Offline' })
+        return (
+          cached || new Response('Offline', { status: 503, statusText: 'Offline' })
+        )
       })()
     )
     return
