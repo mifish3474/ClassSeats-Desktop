@@ -1,13 +1,20 @@
 const BUILD_REV = '__BUILD_REV__'
 const CACHE_NAME = `classseats-pwa-${BUILD_REV}`
 const CORE_ASSETS = [
+  '/',
   './',
+  '/index.html',
   './index.html',
+  '/manifest.webmanifest',
   './manifest.webmanifest',
+  '/icons/icon-192.png',
   './icons/icon-192.png',
+  '/icons/icon-512.png',
   './icons/icon-512.png',
+  '/icons/apple-touch-icon.png',
   './icons/apple-touch-icon.png',
 ]
+const SHELL_ASSETS = ['/', './', '/index.html', './index.html']
 
 const isGoogleRequest = (url) => {
   return (
@@ -38,16 +45,46 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(CORE_ASSETS))
-      .catch(() => {})
+    (async () => {
+      const cache = await caches.open(CACHE_NAME)
+      await Promise.all(
+        CORE_ASSETS.map((asset) =>
+          cache.add(asset).catch(() => null)
+        )
+      )
+
+      let hasShell = false
+      for (const asset of SHELL_ASSETS) {
+        const hit = await cache.match(asset)
+        if (hit) {
+          hasShell = true
+          break
+        }
+      }
+
+      if (!hasShell) {
+        throw new Error('service worker install failed: no cached app shell')
+      }
+    })()
   )
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
+      const cache = await caches.open(CACHE_NAME)
+      const hasShell =
+        (await cache.match('/index.html')) ||
+        (await cache.match('./index.html')) ||
+        (await cache.match('/')) ||
+        (await cache.match('./'))
+
+      // Do not evict prior caches unless this revision has a valid app shell.
+      if (!hasShell) {
+        await self.clients.claim()
+        return
+      }
+
       const keys = await caches.keys()
       await Promise.all(
         keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
@@ -90,12 +127,16 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         try {
           const network = await fetch(request)
-          if (network && network.ok) return network
+          // GH Pages SPA fallback may return the app shell with HTTP 404.
+          // For navigations, any successful fetch response can still boot the app.
+          if (network) return network
         } catch {
           /* ignore */
         }
         const cached =
           (await caches.match(request)) ||
+          (await caches.match('/')) ||
+          (await caches.match('./')) ||
           (await caches.match('/index.html')) ||
           (await caches.match('./index.html'))
         return (
