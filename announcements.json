@@ -91,9 +91,9 @@
     },
 
     {
-  "id": "major-831-easier-student-import",
+  "id": "major-836-easier-student-import",
   "type": "major",
-  "introducedAtRev": "832",
+  "introducedAtRev": "836",
   "title": "Easier Student Import!",
   "subtitle": "New roster import tool is live (and much easier!)",
   "body": "",
@@ -101,7 +101,7 @@
   "sections": [
     {
       "kind": "text",
-      "text": "ClassSeats is very excited to share a new feature to really save you time when you need next need to create a new class.  Now you can copy and paste your student information from . . . anywhere!  Emails, Student Information System, PDFs - anything!  Copy. Paste. Drag. Done!"
+      "text": "ClassSeats is very excited to share a new feature to really save you time when you next need to create a new class.  Now you can copy and paste your student information from . . . anywhere!  Emails, Student Information System, PDFs - anything!  Copy. Paste. Drag. Done!"
     },
     {
       "kind": "video",
