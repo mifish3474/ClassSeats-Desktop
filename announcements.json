@@ -91,9 +91,9 @@
     },
 
     {
-  "id": "major-836-easier-student-import",
+  "id": "major-838-easier-student-import",
   "type": "major",
-  "introducedAtRev": "836",
+  "introducedAtRev": "838",
   "title": "Easier Student Import!",
   "subtitle": "New roster import tool is live (and much easier!)",
   "body": "",
