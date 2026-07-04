@@ -1,0 +1,11 @@
+{
+  "environment": "PROD",
+  "flavor": "desktop",
+  "domain": "app.classseats.app",
+  "deployRepo": "mifish3474/ClassSeats-Desktop",
+  "sourceRepository": "mifish3474/ClassSeats-Codex",
+  "sourceRef": "main",
+  "sourceSha": "902451b45113ef8ace047546105403bd35d4ab23",
+  "sourceRunId": "28709230566",
+  "sourceRunAttempt": "1"
+}
